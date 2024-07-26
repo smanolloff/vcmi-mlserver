@@ -30,18 +30,16 @@ VCMI_LIB_NAMESPACE_BEGIN
 namespace ML {
     class DLL_LINKAGE ServerPlugin {
     public:
-        ServerPlugin(CGameState * gs, Config & config);
+        ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config);
 
         void setupBattleHook(const CGTownInstance *& town, ui32 & seed);
 
-        void startBattleHook1(
+        void startBattleHook(
             const CArmedInstance *&army1,
             const CArmedInstance *&army2,
             const CGHeroInstance *&hero1,
             const CGHeroInstance *&hero2
         );
-
-        void startBattleHook2(const CGHeroInstance* heroes[2], std::shared_ptr<CBattleQuery> q);
 
         void endBattleHook(
             BattleResult * br,
@@ -49,14 +47,8 @@ namespace ML {
             const CGHeroInstance * heroDefender
         );
 
-        // void preBattleHook1(
-        //     const CArmedInstance *& army1,
-        //     const CArmedInstance *& army2,
-        //     const CGHeroInstance *& hero1,
-        //     const CGHeroInstance *& hero2
-        // );
-
     private:
+        CGameHandler * gh;
         CGameState * gs;
         const Config config;
         std::vector<ConstTransitivePtr<CGHeroInstance>> allheroes;

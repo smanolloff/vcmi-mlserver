@@ -21,6 +21,7 @@
 #include "mapObjects/CGHeroInstance.h"
 #include "mapObjects/CGTownInstance.h"
 #include "mapping/CMap.h"
+#include "networkPacks/PacksForClient.h"
 #include "networkPacks/PacksForClientBattle.h"
 #include "server/CGameHandler.h"
 #include "server/CVCMIServer.h"
@@ -61,8 +62,9 @@ namespace ML {
         );
     }
 
-    ServerPlugin::ServerPlugin(CGameState * gs, Config & config)
-    : gs(gs)
+    ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config)
+    : gh(gh)
+    , gs(gs)
     , config(config)
     , allheroes(gs->map->heroesOnMap)
     , alltowns(gs->map->towns)
@@ -95,7 +97,7 @@ namespace ML {
         }
     }
 
-    void ServerPlugin::startBattleHook1(
+    void ServerPlugin::startBattleHook(
         const CArmedInstance *&army1,
         const CArmedInstance *&army2,
         const CGHeroInstance *&hero1,
@@ -153,12 +155,25 @@ namespace ML {
                     auto apos = it->second;
                     auto roll = dist(rng);
                     if (roll < config.warmachineChance) {
-                        if (!h->getArt(apos)) const_cast<CGHeroInstance*>(h)->putArtifact(apos, m);
+                        if (!h->getArt(apos))
+                            const_cast<CGHeroInstance*>(h)->putArtifact(apos, m);
                     } else {
-                        if (h->getArt(apos)) const_cast<CGHeroInstance*>(h)->removeArtifact(apos);
+                        if (h->getArt(apos))
+                            const_cast<CGHeroInstance*>(h)->removeArtifact(apos);
                     }
                 }
             }
+        }
+
+        // Randomize mana
+        auto dist = std::uniform_int_distribution<>(config.manaMin, config.manaMax);
+        for(auto h : {hero1, hero2}) {
+            if(!h) continue;
+            auto sm = SetMana();
+            auto roll = dist(rng);
+            sm.val = roll;
+            sm.hid = h->id;
+            gh->sendAndApply(&sm);
         }
 
         // Set temp owner of both heroes to player0 and player1
@@ -171,17 +186,6 @@ namespace ML {
         // modification by reference
         army1 = static_cast<const CArmedInstance*>(hero1);
         army2 = static_cast<const CArmedInstance*>(hero2);
-    }
-
-    void ServerPlugin::startBattleHook2(const CGHeroInstance* heroes[2], std::shared_ptr<CBattleQuery> q) {
-        auto dist = std::uniform_int_distribution<>(config.manaMin, config.manaMax);
-
-        for(int i : {0, 1}) {
-            if(heroes[i]) {
-                auto roll = dist(rng);
-                q->initialHeroMana[i] = roll;
-            }
-        }
     }
 
     void ServerPlugin::endBattleHook(
