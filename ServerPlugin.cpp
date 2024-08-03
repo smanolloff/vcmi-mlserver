@@ -220,7 +220,7 @@ namespace ML {
 
         if (config.maxBattles && battlecounter >= config.maxBattles) {
             std::cout << "Hit battle limit of " << config.maxBattles << ", will quit now...\n";
-            if (stats) stats->dbupdate();
+            if (stats && config.statsPersistFreq) stats->dbupdate();
             exit(0); // FIXME: this causes OS errors (abrupt program termination)
             return;
         }

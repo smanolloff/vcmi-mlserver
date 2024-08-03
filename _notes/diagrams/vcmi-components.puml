@@ -57,7 +57,7 @@ AddElementTag("ext", $bgColor="#aaa", $borderColor="#aaa", $legendText="ext. com
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
-Container(mlclient, "mlclient", $tags="ext")
+Container(mlclient, "mlclient", "Client ML lib", $tags="ext")
 Container(vcmiclient, "vcmiclient", $tags="lib")
 Container(vcmilauncher, "vcmilauncher", $tags="lib")
 Container(vcmiservercommon, "vcmiservercommon", $tags="lib")
