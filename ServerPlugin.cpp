@@ -25,6 +25,7 @@
 #include "networkPacks/PacksForClientBattle.h"
 #include "server/CGameHandler.h"
 #include "server/CVCMIServer.h"
+#include "vstd/RNG.h"
 #include <limits>
 #include <stdexcept>
 
@@ -214,14 +215,14 @@ namespace ML {
             auto attackerID = extractHeroID(heroAttacker->nameCustomTextId);
             auto defenderID = extractHeroID(heroDefender->nameCustomTextId);
             auto statside = (config.statsMode == "red") ? redside : !redside;
-            auto victory = br->winner == statside;
+            auto victory = br->winner == BattleSide(statside);
             stats->dataadd(victory, attackerID, defenderID);
         }
 
         if (config.maxBattles && battlecounter >= config.maxBattles) {
             std::cout << "Hit battle limit of " << config.maxBattles << ", will quit now...\n";
             if (stats && config.statsPersistFreq) stats->dbupdate();
-            exit(0); // FIXME: this causes OS errors (abrupt program termination)
+            exit(0); // XXX: is there any way to exit gracefully?
             return;
         }
     }
