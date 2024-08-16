@@ -38,6 +38,9 @@ note {  MaximumWidth 500 }
   !return $replace($txt, "\n", %newline())
 !endfunction
 
+!function $pad($txt)
+  !return $nbsp+$txt+$nbsp
+!endfunction
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
@@ -50,35 +53,35 @@ SetDefaultLegendEntries("")
 
 ' AddElementTag("example", ?bgColor, ?fontColor, ?borderColor, ?shadowing, ?shape, ?sprite, ?techn, ?legendText, ?legendSprite, ?borderStyle, ?borderThickness): Introduces a new element tag. The styles of the tagged elements are updated and the tag is displayed in the calculated legend.
 AddElementTag("core_lib", $bgColor="SteelBlue", $borderColor="SteelBlue", $legendText="vcmi core lib")
-AddElementTag("core_exe", $bgColor="DarkBlue", $borderColor="DarkBlue", $legendText="vcmi core executable")
+AddElementTag("core_exe", $shape=EightSidedShape(),, $bgColor="DarkBlue", $borderColor="DarkBlue", $legendText="vcmi core executable")
 AddElementTag("mmai_lib", $bgColor="DarkOrange", $borderColor="Orange", $legendText="vcmi ML lib (gameplay)")
-AddElementTag("mmai_exe", $bgColor="OrangeRed", $borderColor="DarkOrange", $legendText="vcmi ML exe (gameplay)")
+AddElementTag("mmai_exe", $shape=EightSidedShape(),, $bgColor="OrangeRed", $borderColor="DarkOrange", $legendText="vcmi ML exe (gameplay)")
 AddElementTag("ml_lib", $bgColor="IndianRed", $borderColor="IndianRed", $legendText="vcmi ML lib (training)")
-AddElementTag("ml_exe", $bgColor="DarkRed", $borderColor="DarkRed", $legendText="vcmi ML executable (training)")
+AddElementTag("ml_exe", $shape=EightSidedShape(), $bgColor="DarkRed", $borderColor="DarkRed", $legendText="vcmi ML executable (training)")
 AddElementTag("ext_lib", $bgColor="Gray", $borderColor="Gray", $legendText="external system")
 AddElementTag("dual_lib", $bgColor="DarkOrange|IndianRed", $borderColor="Gray", $legendText="external system")
 
+AddBoundaryTag(legend, $borderColor="White")
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-Container(connector, "connector", "vcmi-gym", $tags="ext_lib")
-' Container(torch, "torch", $tags="ext_lib")
 
 Container(mlclient, "mlclient", "VCMI entrypoint for ML", $tags="ml_lib")
-Container(vcmiclient, "vcmiclient", $tags="core_exe")
+Container(connector, "connector", "vcmi-gym", $tags="ext_lib")
+Container(vcmiclient, $pad("vcmiclient"), $tags="core_exe")
 Container(mmailoader, "mmailoader", "Loads pre-trained models", $tags="mmai_lib")
+Container(torch, "torch", $tags="ext_lib")
 Container(vcmiclientcommon, "vcmiclientcommon", $tags="core_lib")
-Container(vcmiservercommon, "vcmiservercommon", $tags="core_lib")
-Container(vcmiserver, "vcmiserver", $tags="core_exe")
-Container(vcmilobby, "vcmilobby", $tags="core_exe")
-Container(vcmieditor, "vcmieditor", $tags="core_exe")
-Container(vcmilauncher, "vcmilauncher", $tags="core_exe")
+Container(vcmiserver, $pad("vcmiserver"), $tags="core_exe")
+Container(vcmilobby, $pad("vcmilobby"), $tags="core_exe")
+Container(vcmieditor, $pad("vcmieditor"), $tags="core_exe")
+Container(vcmilauncher, $pad("vcmilauncher"), $tags="core_exe")
 Container(vcmi, "vcmi", $tags="core_lib")
+Container(vcmiservercommon, "vcmiservercommon", $tags="core_lib")
 Container(mlserverplugin, "mlserverplugin", "Server ML lib", $tags="ml_lib")
-' Container(mlclient_cli, "mlclient-cli", $tags="ml_exe")
+Container(mlclient_cli, $pad("mlclient-cli"), $tags="ml_exe")
 
 Rel(connector, mlclient, "")
-' Rel(mmailoader, torch, "")
+Rel(mmailoader, torch, "")
 
 Boundary(AI, "AI") {
   Container(VCAI, "VCAI", $tags="core_lib")
@@ -88,10 +91,10 @@ Boundary(AI, "AI") {
   Container(MMAI, "MMAI", "AI ML interface lib", $tags="dual_lib")
 }
 
-' Rel(mlclient_cli, mlclient, "")
+Rel(mlclient_cli, mlclient, "")
 Rel(mlclient, vcmiclientcommon, "")
+Rel(mlclient, mmailoader, "")
 Rel(vcmiclient, mmailoader, "")
-' Rel(vcmiclient, vcmilauncher, "")
 Rel(vcmiclient, vcmiclientcommon, "")
 Rel(vcmiclientcommon, vcmiservercommon, "")
 Rel(vcmiclientcommon, vcmi, "")
@@ -107,6 +110,17 @@ Rel(vcmi, StupidAI, "")
 Rel(vcmi, BattleAI, "")
 Rel(vcmi, NKAI, "")
 Rel(vcmi, MMAI, "")
+
+Boundary(legend, "Shapes:", $tags="legend") {
+  Container(lib, "<i><<library>>", $tags="core_lib")
+  Container(exe, $pad("<i><<executable>>"), $tags="core_exe")
+}
+
+Lay_Distance(MMAI, lib, 1)
+Lay_Distance(torch, vcmilauncher, 0)
+' Lay_Distance(vcmilobby, vcmi, 1)
+' Lay_Distance(vcmieditor, vcmi, 1)
+Lay_Distance(vcmilauncher, vcmi, 1)
 
 SHOW_LEGEND()
 
