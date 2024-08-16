@@ -17,6 +17,7 @@
 #include "ServerPlugin.h"
 #include "ArtifactUtils.h"
 #include "Global.h"
+#include "constants/EntityIdentifiers.h"
 #include "gameState/CGameState.h"
 #include "mapObjects/CGHeroInstance.h"
 #include "mapObjects/CGTownInstance.h"
@@ -35,6 +36,7 @@ namespace ML {
     // static
     std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> InitWarMachines(CGameState * gs) {
         auto res = std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> {};
+
         for (const auto &h : gs->map->heroesOnMap) {
             res.insert({h, {
                 ArtifactUtils::createNewArtifactInstance(ArtifactID::BALLISTA),
@@ -72,7 +74,28 @@ namespace ML {
     , allmachines(InitWarMachines(gs))
     , stats(InitStats(gs, config))
     , rng(std::mt19937(gs->getRandomGenerator().nextInt(0, std::numeric_limits<int>::max())))
-    {}
+    {
+        // Expert leadership + this set of artifacts ensures 0 morale and luck
+        auto artifacts = std::map<ArtifactPosition, ArtifactID> {
+            {ArtifactPosition::NECK, ArtifactID(108)},  // pendantOfCourage
+            {ArtifactPosition::MISC1, ArtifactID(50)},  // crestOfValor
+            {ArtifactPosition::MISC2, ArtifactID(51)},  // glyphOfGallantry
+            {ArtifactPosition::MISC3, ArtifactID(84)},  // spiritOfOppression
+            {ArtifactPosition::MISC4, ArtifactID(85)},  // hourglassOfTheEvilHour
+        };
+
+        for (const auto &h : gs->map->heroesOnMap) {
+            auto hh = const_cast<CGHeroInstance*>(h.get());
+
+            for (auto &[pos, artid] : artifacts) {
+                if (hh->artifactsWorn.find(pos) != hh->artifactsWorn.end())
+                    hh->removeArtifact(pos);
+                hh->putArtifact(pos, ArtifactUtils::createNewArtifactInstance(artid));
+            }
+
+            hh->setSecSkillLevel(SecondarySkill::LEADERSHIP, 3, true);
+        }
+    }
 
     void ServerPlugin::setupBattleHook(const CGTownInstance *& town, ui32 & seed) {
         if (config.randomObstacles > 0 && (battlecounter % config.randomObstacles == 0)) {
