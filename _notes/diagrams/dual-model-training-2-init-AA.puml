@@ -1,7 +1,6 @@
 @startuml "vcmi-1.32-connector-v2-render"
 
 title "VCMI dual-model training"
-title "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW"
 
 skinparam sequenceBoxBorderColor #FFF
 

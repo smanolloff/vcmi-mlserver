@@ -130,7 +130,7 @@ Usecase {
 
 $Data(obs, "Observation", "11x15*N", "N = N_HEX_ATTRS")
 $Convolution(conv0, "Conv2d", "kernel_size=(1, 56)\nstride=1\nout_channels=32")
-$Link(encoder, conv0, "<<ReLU>>\n\n(165, E)\n→\n(E, 11, 15)")
+$Link(obs, conv0, "<<ReLU>>\n\n(165, E)\n→\n(E, 11, 15)")
 $Convolution(conv1, "Conv2d", "kernel_size=5\nstride=1\nout_channels=32")
 $Link(conv0, conv1, "<<ReLU>>\n\n(165, E)\n→\n(E, 11, 15)")
 $Convolution(conv2, "Conv2d", "kernel_size=3\nstride=1\nout_channels=64 ")

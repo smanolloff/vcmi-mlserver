@@ -41,10 +41,6 @@ partition $ms("pack.visit(visitor)") {
 
   partition $ms("apply = applier->getApplier(...)") {
     $node("CBaseForServerApply * apply = applier->getApplier(typeList.getTypeID(pack.get()))", "CVCMIServer.cpp", 465, "CVCMIServer::handleReceivedPack")
-    note right
-    ""pack"" is actually a ""std::unique_ptr"" (ie. smart pointer)
-    "pack.get()" returns the actual (raw) pointer to the object
-    end note
 
     $node("getTypeID(getTypeInfo(ptr))", "CTypeList.h", 146, "template CTypeList::getTypeID")
     note right
@@ -104,7 +100,6 @@ partition $ms("pack.visit(visitor)") {
 
       Also, the function name `isForServer` is confusing here, as it actually
       checks if the packet is for a //game// server (as opposed to lobby server, for example).
-      A more appropriate name would be "isForGameServer" or "isForGH" (GameHandler)
       end note
 
       :""this.visitTyped(visitor)                  "" $src("NetPacksLib.cpp:50", "CPack::visit")
