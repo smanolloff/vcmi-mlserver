@@ -27,14 +27,40 @@
 #include "server/CGameHandler.h"
 #include "server/CVCMIServer.h"
 #include "vstd/RNG.h"
+#include <cstdlib>
 #include <limits>
 #include <stdexcept>
+#include <regex>
 
 VCMI_LIB_NAMESPACE_BEGIN
 
 namespace ML {
-    // static
-    std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> InitWarMachines(CGameState * gs) {
+    /*
+     * Organize heroes into pools based on hero name
+     * Format: "hero_<INT>_pool_<STR>"
+     * Example: "hero_5123_pool_150k"
+     */
+    static std::map<std::string, std::pair<HeroPool, int>> InitHeroPools(HeroPool allheroes) {
+        auto pattern = std::regex(R"(^hero_\d+_pool_([0-9A-Za-z]+)$)");
+        auto res = std::map<std::string, std::pair<HeroPool, int>> {};
+
+        for (auto &hero : allheroes) {
+            std::string pool = "default";  // fallback pool
+            std::smatch matches;
+
+            // Check if the entire string matches the pattern
+            if (std::regex_match(hero->nameCustomTextId, matches, pattern))
+                pool = matches[1].str();
+
+            auto &[poolheroes, _] = res[pool];
+            poolheroes.push_back(hero);
+        }
+
+        std::cout << "Grouped heroes into " << res.size() << " pools\n";
+        return res;
+    }
+
+    static std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> InitWarMachines(CGameState * gs) {
         auto res = std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> {};
 
         for (const auto &h : gs->map->heroesOnMap) {
@@ -69,13 +95,25 @@ namespace ML {
     : gh(gh)
     , gs(gs)
     , config(config)
-    , allheroes(gs->map->heroesOnMap)
+    , heropools(InitHeroPools(gs->map->heroesOnMap))
     , alltowns(gs->map->towns)
     , allmachines(InitWarMachines(gs))
     , stats(InitStats(gs, config))
     , rng(std::mt19937(gs->getRandomGenerator().nextInt(0, std::numeric_limits<int>::max())))
     {
-        // Expert leadership + this set of artifacts ensures 0 morale and luck
+        if (config.randomHeroes > 0) {
+            for (auto &[pool, pooldata] : heropools) {
+                auto &[poolheroes, _] = pooldata;
+                if (poolheroes.size() % 2 != 0) {
+                    throw std::runtime_error("An even number of heroes is required in each hero pool.");
+                }
+            }
+        }
+
+        /*
+         * Give artifacts + leadership to all heroes
+         * (ensures morale and luck will be 0)
+         */
         auto artifacts = std::map<ArtifactPosition, ArtifactID> {
             {ArtifactPosition::NECK, ArtifactID(108)},  // pendantOfCourage
             {ArtifactPosition::MISC1, ArtifactID(50)},  // crestOfValor
@@ -138,26 +176,31 @@ namespace ML {
         // printf("config.randomHeroes = %d\n", config.randomHeroes);
 
         if (config.randomHeroes > 0) {
-            if (allheroes.size() % 2 != 0)
-                throw std::runtime_error("Heroes size must be even");
+            // pick a random pool of heroes
+            auto it = heropools.begin();
+            std::advance(it, std::rand() % heropools.size());
+            // auto &pool = it->first;
+            auto &[poolheroes, poolcounter] = it->second;
 
-            if (herocounter % allheroes.size() == 0) {
-                herocounter = 0;
+            if (poolcounter % poolheroes.size() == 0) {
+                poolcounter = 0;
 
-                std::shuffle(allheroes.begin(), allheroes.end(), rng);
+                std::shuffle(poolheroes.begin(), poolheroes.end(), rng);
 
                 // for (int i=0; i<allheroes.size(); i++)
                 //  printf("allheroes[%d] = %s\n", i, allheroes.at(i)->getNameTextID().c_str());
             }
-            // printf("herocounter = %d\n", herocounter);
+            // printf("poolcounter = %d\n", poolcounter);
 
             // XXX: heroes must be different (objects must have different tempOwner)
             // modification by reference
-            hero1 = allheroes.at(herocounter);
-            hero2 = allheroes.at(herocounter+1);
+            hero1 = poolheroes.at(poolcounter);
+            hero2 = poolheroes.at(poolcounter+1);
 
             if (battlecounter % config.randomHeroes == 0)
-                herocounter += 2;
+                poolcounter += 2;
+
+            // std::cout << "Pool: " << it->first << ", " << hero1->nameCustomTextId << " vs. " << hero2->nameCustomTextId << "\n";
         }
 
         if (config.warmachineChance > 0) {
