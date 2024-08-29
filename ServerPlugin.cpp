@@ -40,20 +40,30 @@ namespace ML {
      * Format: "hero_<INT>_pool_<STR>"
      * Example: "hero_5123_pool_150k"
      */
-    static std::map<std::string, std::pair<HeroPool, int>> InitHeroPools(HeroPool allheroes) {
+    static std::map<std::string, HeroPool> InitHeroPools(std::vector<ConstTransitivePtr<CGHeroInstance>> allheroes) {
         auto pattern = std::regex(R"(^hero_\d+_pool_([0-9A-Za-z]+)$)");
-        auto res = std::map<std::string, std::pair<HeroPool, int>> {};
+        auto res = std::map<std::string, HeroPool> {};
+        int poolid = 0;
 
         for (auto &hero : allheroes) {
-            std::string pool = "default";  // fallback pool
+            std::string poolname = "default";  // fallback poolname
             std::smatch matches;
 
             // Check if the entire string matches the pattern
             if (std::regex_match(hero->nameCustomTextId, matches, pattern))
-                pool = matches[1].str();
+                poolname = matches[1].str();
 
-            auto &[poolheroes, _] = res[pool];
-            poolheroes.push_back(hero);
+            if (res.count(poolname) == 0)
+                res.insert({poolname, HeroPool(poolid++, poolname)});
+
+            auto it = res.find(poolname);
+            if (it == res.end()) {
+                res.insert({poolname, HeroPool(poolid++, poolname)});
+                it = res.find(poolname);
+            }
+
+            auto &pool = it->second;
+            pool.heroes.push_back(hero);
         }
 
         std::cout << "Grouped heroes into " << res.size() << " pools\n";
@@ -102,9 +112,8 @@ namespace ML {
     , rng(std::mt19937(gs->getRandomGenerator().nextInt(0, std::numeric_limits<int>::max())))
     {
         if (config.randomHeroes > 0) {
-            for (auto &[pool, pooldata] : heropools) {
-                auto &[poolheroes, _] = pooldata;
-                if (poolheroes.size() % 2 != 0) {
+            for (auto &[poolname, pool] : heropools) {
+                if (pool.heroes.size() % 2 != 0) {
                     throw std::runtime_error("An even number of heroes is required in each hero pool.");
                 }
             }
@@ -180,12 +189,12 @@ namespace ML {
             auto it = heropools.begin();
             std::advance(it, std::rand() % heropools.size());
             // auto &pool = it->first;
-            auto &[poolheroes, poolcounter] = it->second;
+            auto &pool = it->second;
 
-            if (poolcounter % poolheroes.size() == 0) {
-                poolcounter = 0;
+            if (pool.counter % pool.heroes.size() == 0) {
+                pool.counter = 0;
 
-                std::shuffle(poolheroes.begin(), poolheroes.end(), rng);
+                std::shuffle(pool.heroes.begin(), pool.heroes.end(), rng);
 
                 // for (int i=0; i<allheroes.size(); i++)
                 //  printf("allheroes[%d] = %s\n", i, allheroes.at(i)->getNameTextID().c_str());
@@ -194,11 +203,11 @@ namespace ML {
 
             // XXX: heroes must be different (objects must have different tempOwner)
             // modification by reference
-            hero1 = poolheroes.at(poolcounter);
-            hero2 = poolheroes.at(poolcounter+1);
+            hero1 = pool.heroes.at(pool.counter);
+            hero2 = pool.heroes.at(pool.counter+1);
 
             if (battlecounter % config.randomHeroes == 0)
-                poolcounter += 2;
+                pool.counter += 2;
 
             // std::cout << "Pool: " << it->first << ", " << hero1->nameCustomTextId << " vs. " << hero2->nameCustomTextId << "\n";
         }
@@ -263,32 +272,47 @@ namespace ML {
         // don't record stats for retreats (i.e. env resets)
         if (stats && br->result == EBattleResult::NORMAL) {
             auto extractHeroID = [](std::string name) {
-                auto pos = name.find('_');
-                if (pos == std::string::npos)
-                    throw std::runtime_error("No underscore found in hero name: " + name);
-                auto num_str = name.substr(pos + 1);
-                auto num = -1;
+                // Define the regex pattern
+                std::regex pattern(R"(^hero_(\d+)_pool_([0-9A-Za-z]+)$)");
 
-                try {
-                    num = std::stoi(num_str);
-                } catch (const std::exception &e) {
-                    throw std::runtime_error("Could not extract hero ID from name: " + name + ": " + e.what());
-                }
+                std::smatch match;
+                if (!std::regex_match(name, match, pattern))
+                    throw std::runtime_error("invalid hero name: " + name);
 
-                return num;
+                // Extract hero_id and pool_name
+                int hero_id = std::stoi(match[1].str());
+                std::string pool_name = match[2].str();
+
+                return std::pair<int, std::string>(hero_id, pool_name);
             };
 
-            auto attackerID = extractHeroID(heroAttacker->nameCustomTextId);
-            auto defenderID = extractHeroID(heroDefender->nameCustomTextId);
+            auto [attackerID, poolname] = extractHeroID(heroAttacker->nameCustomTextId);
+            auto [defenderID, poolname2] = extractHeroID(heroDefender->nameCustomTextId);
+
+            if (poolname != poolname2)
+                throw std::runtime_error("Pools do not match: " + poolname + " <> " + poolname2);
+
+            auto it = heropools.find(poolname);
+            if (it == heropools.end())
+                throw std::runtime_error("Could not pool with name: " + poolname);
+
+            auto poolid = it->second.id;
             auto statside = (config.statsMode == "red") ? redside : !redside;
             auto victory = br->winner == BattleSide(statside);
-            stats->dataadd(victory, attackerID, defenderID);
+            stats->dataadd(victory, poolid, attackerID, defenderID);
         }
 
         if (config.maxBattles && battlecounter >= config.maxBattles) {
             std::cout << "Hit battle limit of " << config.maxBattles << ", will quit now...\n";
             if (stats && config.statsPersistFreq) stats->dbupdate();
-            exit(0); // XXX: is there any way to exit gracefully?
+
+            #ifdef VCMI_APPLE
+                ::exit(EXIT_SUCCESS);
+            #else
+                std::quick_exit(EXIT_SUCCESS);
+            #endif
+
+            ::exit(EXIT_SUCCESS);
             return;
         }
     }

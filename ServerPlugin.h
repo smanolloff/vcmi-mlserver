@@ -28,8 +28,16 @@
 VCMI_LIB_NAMESPACE_BEGIN
 
 namespace ML {
-    using HeroPool = std::vector<ConstTransitivePtr<CGHeroInstance>>;
-    using TownPool = std::vector<ConstTransitivePtr<CGTownInstance>>;
+    class HeroPool {
+    public:
+        HeroPool(int id, std::string name)
+        : id(id), name(name) {}
+
+        const int id;
+        const std::string name;
+        std::vector<ConstTransitivePtr<CGHeroInstance>> heroes = {};
+        int counter = 0;
+    };
 
     class DLL_LINKAGE ServerPlugin {
     public:
@@ -54,8 +62,8 @@ namespace ML {
         CGameHandler * gh;
         CGameState * gs;
         const Config config;
-        std::map<std::string, std::pair<HeroPool, int>> heropools;
-        TownPool alltowns;
+        std::map<std::string, HeroPool> heropools;
+        std::vector<ConstTransitivePtr<CGTownInstance>> alltowns;
         std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> allmachines;
         std::unique_ptr<Stats> stats;
         std::mt19937 rng;

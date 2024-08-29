@@ -1,35 +1,48 @@
 --
 -- Query to seed `stats` table with data.
 -- Given the number of heroes, it will insert a row with wins=0 and games=0
---  for each possible pair of hero IDs.
+--  for each possible pair of hero IDs within the given number of pools.
 --
 -- Parameters:
---  1: number of heroes on the map
---  2: the side from which stats are collected (0 for left, 1 for right side)
+--  1: number of pools
+--  2: number of heroes in one pool
+--  3: the side from which stats are collected (0 for left, 1 for right side)
 --
--- To seed for 8 heroes and side 0:
+-- To seed for 2 pools, 4 heroes per pool and side 0:
 --  $ cat seed.sql |
---      sed -e "s/--.*//" -e "1,/\?/s/\?/8/" -e "1,/\?/s/\?/0/" |
+--      sed -e "s/--.*//" -e "1,/\?/s/\?/2/" -e "1,/\?/s/\?/4/" -e "1,/\?/s/\?/0/" |
 --      sqlite3 stats.db
 --
 BEGIN;
 WITH RECURSIVE
-    hero_ids AS (
-        SELECT 0 AS n
+    config AS (
+        SELECT ? AS n_pools, ? AS pool_size
+    ),
+    pools AS (
+        SELECT 0 AS id
         UNION ALL
-        SELECT n + 1
-        FROM hero_ids
-        WHERE n < (? - 1)
+        SELECT id + 1
+        FROM pools, config
+        WHERE id + 1 < config.n_pools
+    ),
+    heroes AS (
+        SELECT 0 AS id
+        UNION ALL
+        SELECT id + 1
+        FROM heroes, config
+        WHERE id + 1 < config.pool_size
     ),
     data AS (
-        SELECT lhero_ids.n AS lhero,
-               rhero_ids.n AS rhero
-        FROM hero_ids AS lhero_ids,
-             hero_ids AS rhero_ids
-        WHERE lhero != rhero
+        SELECT
+            pools.id as pool,
+            (pools.id * config.pool_size) + lheroes.id AS lhero,
+            (pools.id * config.pool_size) + rheroes.id AS rhero
+        FROM heroes AS lheroes, heroes AS rheroes, pools, config
+        WHERE lheroes.id != rheroes.id
+        ORDER BY pool, lhero, rhero
     )
-INSERT INTO stats (lhero, rhero, wins, games)
-SELECT lhero, rhero, 0, 0
+INSERT INTO stats (pool, lhero, rhero, wins, games)
+SELECT pool, lhero, rhero, 0, 0
 FROM data;
 
 INSERT INTO stats_md (side) VALUES (?);

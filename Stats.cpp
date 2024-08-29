@@ -116,7 +116,8 @@ namespace ML {
       , maxbattles(maxbattles_)
       , persistcounter(persistfreq_)
     {
-        buffer.reserve(maxbattles);
+        // TODO: must be also min(rows, min(maxbattles, persistfreq))
+        buffer.reserve(std::min(maxbattles, persistfreq));
 
         // TODO: make parameter to optionally skip
         // verify(side);
@@ -130,7 +131,7 @@ namespace ML {
             Error("sqlite3_open: %s", sqlite3_errmsg(db));
 
         withinTransaction(db, false, [db, side] {
-            ExecSQL(db, "INSERT INTO stats (lhero, rhero, wins, games) VALUES (0,0,0,0)");
+            ExecSQL(db, "INSERT INTO stats (pool, lhero, rhero, wins, games) VALUES (0,0,0,0,0)");
 
             sqlite3_stmt* stmt;
             const char* sql = "SELECT side FROM stats_md";
@@ -194,7 +195,7 @@ namespace ML {
                 const char* sql =
                     "UPDATE stats "
                     "SET wins=wins+?, games=games+? "
-                    "WHERE lhero=? AND rhero=? "
+                    "WHERE pool=? AND lhero=? AND rhero=? "
                     "RETURNING id";
 
                 if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK)
@@ -203,14 +204,15 @@ namespace ML {
                 logStats->trace("Prepared: %s", sql);
 
                 for (auto &[k, v] : buffer) {
-                    auto [lhero, rhero] = k;
+                    auto [pool, lhero, rhero] = k;
                     auto [wins, games] = v;
                     sqlite3_bind_int(stmt, 1, wins);
                     sqlite3_bind_int(stmt, 2, games);
-                    sqlite3_bind_int(stmt, 3, lhero);
-                    sqlite3_bind_int(stmt, 4, rhero);
+                    sqlite3_bind_int(stmt, 3, pool);
+                    sqlite3_bind_int(stmt, 4, lhero);
+                    sqlite3_bind_int(stmt, 5, rhero);
 
-                    logStats->trace("Bindings: %d %d %d %d", wins, games, lhero, rhero);
+                    logStats->trace("Bindings: %d %d %d %d %d", wins, games, pool, lhero, rhero);
 
                     auto rc = sqlite3_step(stmt);
                     if (rc != SQLITE_ROW)
@@ -248,9 +250,9 @@ namespace ML {
         MEASURE_END(dbupdate, 5000);
     }
 
-    void Stats::dataadd(bool victory, int heroL, int heroR) {
-        logStats->debug("Adding data: victory=%d heroL=%d heroR=%d", victory, heroL, heroR);
-        auto key = std::tuple<int, int> {heroL, heroR};
+    void Stats::dataadd(bool victory, int pool, int heroL, int heroR) {
+        logStats->debug("Adding data: victory=%d pool=%d heroL=%d heroR=%d", victory, pool, heroL, heroR);
+        auto key = std::tuple<int, int, int> {pool, heroL, heroR};
         auto it = buffer.find(key);
         if(it == buffer.end()) {
             buffer.insert({key, {static_cast<int>(victory), 1}});
