@@ -75,9 +75,9 @@ namespace ML {
 
         for (const auto &h : gs->map->heroesOnMap) {
             res.insert({h, {
-                ArtifactUtils::createNewArtifactInstance(ArtifactID::BALLISTA),
-                ArtifactUtils::createNewArtifactInstance(ArtifactID::AMMO_CART),
-                ArtifactUtils::createNewArtifactInstance(ArtifactID::FIRST_AID_TENT)
+                ArtifactUtils::createArtifact(ArtifactID::BALLISTA),
+                ArtifactUtils::createArtifact(ArtifactID::AMMO_CART),
+                ArtifactUtils::createArtifact(ArtifactID::FIRST_AID_TENT)
             }});
         }
         return res;
@@ -137,7 +137,7 @@ namespace ML {
             for (auto &[pos, artid] : artifacts) {
                 if (hh->artifactsWorn.find(pos) != hh->artifactsWorn.end())
                     hh->removeArtifact(pos);
-                hh->putArtifact(pos, ArtifactUtils::createNewArtifactInstance(artid));
+                hh->putArtifact(pos, ArtifactUtils::createArtifact(artid));
             }
 
             hh->setSecSkillLevel(SecondarySkill::LEADERSHIP, 3, true);
