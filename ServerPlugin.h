@@ -70,6 +70,7 @@ namespace ML {
 
         int towncounter = 0;
         int battlecounter = 0;
+        int poolcounter = 0;
         int redside = 0;
     };
 }

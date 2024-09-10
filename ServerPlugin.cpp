@@ -185,15 +185,15 @@ namespace ML {
         // printf("config.randomHeroes = %d\n", config.randomHeroes);
 
         if (config.randomHeroes > 0) {
-            // pick a random pool of heroes
+            if (poolcounter % heropools.size() == 0)
+                poolcounter = 0; // no shuffling for std::map
+
             auto it = heropools.begin();
-            std::advance(it, std::rand() % heropools.size());
-            // auto &pool = it->first;
+            std::advance(it, poolcounter);
             auto &pool = it->second;
 
             if (pool.counter % pool.heroes.size() == 0) {
                 pool.counter = 0;
-
                 std::shuffle(pool.heroes.begin(), pool.heroes.end(), rng);
 
                 // for (int i=0; i<allheroes.size(); i++)
@@ -206,8 +206,10 @@ namespace ML {
             hero1 = pool.heroes.at(pool.counter);
             hero2 = pool.heroes.at(pool.counter+1);
 
-            if (battlecounter % config.randomHeroes == 0)
+            if (battlecounter % config.randomHeroes == 0) {
+                poolcounter += 1;
                 pool.counter += 2;
+            }
 
             // std::cout << "Pool: " << it->first << ", " << hero1->nameCustomTextId << " vs. " << hero2->nameCustomTextId << "\n";
         }
