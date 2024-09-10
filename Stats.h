@@ -43,7 +43,7 @@ namespace ML {
         using STAT = std::tuple<N_WINS, N_GAMES>;
 
         // XXX: dbpath must be unuque for agent, map and perspective
-        Stats(std::string dbpath, int side, int timeout, int persistfreq, int maxbattles);
+        Stats(std::string dbpath, int side, int timeout, int persistfreq, int maxbattles, int npools, int poolsize);
 
         void dbupdate(); // add buffers data to DB
         void dataadd(bool victory, int pool, int heroL, int heroR);
@@ -55,7 +55,7 @@ namespace ML {
         const int persistfreq;
         const int timeout;
         int persistcounter;
-        void verify(int side);
+        void verify(int side, int npools, int poolsize);
     };
 }
 

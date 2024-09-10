@@ -109,7 +109,9 @@ namespace ML {
         int side,
         int timeout_,
         int persistfreq_,
-        int maxbattles_
+        int maxbattles_,
+        int npools,
+        int poolsize
     ) : dbpath(dbpath_)
       , timeout(timeout_)
       , persistfreq(persistfreq_)
@@ -120,21 +122,21 @@ namespace ML {
         buffer.reserve(std::min(maxbattles, persistfreq));
 
         // TODO: make parameter to optionally skip
-        // verify(side);
+        verify(side, npools, poolsize);
     }
 
-    void Stats::verify(int side) {
+    void Stats::verify(int side, int npools, int poolsize) {
         // test DB structure and verify side against the DB metadata
 
         sqlite3* db;
         if (sqlite3_open(dbpath.c_str(), &db))
             Error("sqlite3_open: %s", sqlite3_errmsg(db));
 
-        withinTransaction(db, false, [db, side] {
+        withinTransaction(db, false, [db, side, npools, poolsize] {
             ExecSQL(db, "INSERT INTO stats (pool, lhero, rhero, wins, games) VALUES (0,0,0,0,0)");
 
             sqlite3_stmt* stmt;
-            const char* sql = "SELECT side FROM stats_md";
+            const char* sql = "SELECT side, n_pools, pool_size FROM stats_md";
             if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK)
                 Error("sqlite3_prepare_v2: %s", sqlite3_errmsg(db));
 
@@ -148,6 +150,16 @@ namespace ML {
 
             if (dbside != side)
                 Error("init: side check failed: side in DB is %d, want: %d", dbside, side);
+
+            auto ndbpools = sqlite3_column_int(stmt, 1);
+
+            if (ndbpools != npools)
+                Error("init: npools check failed: pools in DB are %d, want: %d", ndbpools, npools);
+
+            auto dbpoolsize = sqlite3_column_int(stmt, 2);
+
+            if (dbpoolsize != poolsize)
+                Error("init: poolsize check failed: poolsize in DB is %d, want: %d", dbpoolsize, poolsize);
 
             rc = sqlite3_step(stmt);
             if (rc != SQLITE_DONE)

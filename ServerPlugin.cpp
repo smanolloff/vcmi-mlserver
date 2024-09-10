@@ -84,7 +84,7 @@ namespace ML {
     }
 
     // static
-    std::unique_ptr<Stats> InitStats(CGameState * gs, Config config) {
+    std::unique_ptr<Stats> InitStats(CGameState * gs, Config config, int npools, int poolsize) {
         if (config.statsMode == "disabled")
             return nullptr;
 
@@ -97,7 +97,9 @@ namespace ML {
             config.statsMode == "blue",
             config.statsTimeout,
             config.statsPersistFreq,
-            config.maxBattles
+            config.maxBattles,
+            npools,
+            poolsize
         );
     }
 
@@ -108,7 +110,7 @@ namespace ML {
     , heropools(InitHeroPools(gs->map->heroesOnMap))
     , alltowns(gs->map->towns)
     , allmachines(InitWarMachines(gs))
-    , stats(InitStats(gs, config))
+    , stats(InitStats(gs, config, heropools.size(), heropools.begin()->second.heroes.size()))
     , rng(std::mt19937(gs->getRandomGenerator().nextInt(0, std::numeric_limits<int>::max())))
     {
         if (config.randomHeroes > 0) {

@@ -17,5 +17,10 @@ CREATE TABLE stats (
 CREATE UNIQUE INDEX stats_idx
 ON stats(pool, lhero, rhero);
 
-CREATE TABLE stats_md (side INTEGER primary key);
+CREATE TABLE stats_md (
+  side INTEGER,
+  n_pools INTEGER,
+  pool_size INTEGER,
+  PRIMARY KEY (side, n_pools, pool_size)
+);
 COMMIT;

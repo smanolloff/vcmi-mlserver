@@ -65,7 +65,7 @@ namespace ML {
         std::map<std::string, HeroPool> heropools;
         std::vector<ConstTransitivePtr<CGTownInstance>> alltowns;
         std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> allmachines;
-        std::unique_ptr<Stats> stats;
+        std::unique_ptr<Stats> stats;  // XXX: must come after heropools
         std::mt19937 rng;
 
         int towncounter = 0;
