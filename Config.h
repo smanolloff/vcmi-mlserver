@@ -26,6 +26,7 @@ namespace ML {
     public:
         void init(SettingsStorage &settings) {
             maxBattles = settings["server"]["ML"]["maxBattles"].Integer();
+            rngSeed = settings["server"]["ML"]["seed"].Integer();
             randomHeroes = settings["server"]["ML"]["randomHeroes"].Integer();
             randomObstacles = settings["server"]["ML"]["randomObstacles"].Integer();
             townChance = settings["server"]["ML"]["townChance"].Integer();
@@ -41,6 +42,7 @@ namespace ML {
         }
 
         int maxBattles = 0;
+        int rngSeed = 0;
         int randomHeroes = 0;
         int randomObstacles = 0;
         int townChance = 0;

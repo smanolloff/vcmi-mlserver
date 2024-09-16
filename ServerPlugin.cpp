@@ -111,7 +111,7 @@ namespace ML {
     , alltowns(gs->map->towns)
     , allmachines(InitWarMachines(gs))
     , stats(InitStats(gs, config, heropools.size(), heropools.begin()->second.heroes.size()))
-    , rng(std::mt19937(gs->getRandomGenerator().nextInt(0, std::numeric_limits<int>::max())))
+    , rng(std::mt19937(config.rngSeed ? config.rngSeed : gs->getRandomGenerator().nextInt(0, std::numeric_limits<int>::max())))
     {
         if (config.randomHeroes > 0) {
             for (auto &[poolname, pool] : heropools) {
@@ -207,6 +207,8 @@ namespace ML {
             // modification by reference
             hero1 = pool.heroes.at(pool.counter);
             hero2 = pool.heroes.at(pool.counter+1);
+
+            // printf("Pool: %s, hero0: %s, hero1: %s\n", pool.name.c_str(), hero1->nameCustomTextId.c_str(), hero2->nameCustomTextId.c_str());
 
             if (battlecounter % config.randomHeroes == 0) {
                 poolcounter += 1;
