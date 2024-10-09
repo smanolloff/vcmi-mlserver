@@ -255,7 +255,7 @@ namespace ML {
             auto roll = dist(rng);
             sm.val = roll;
             sm.hid = h->id;
-            gh->sendAndApply(&sm);
+            gh->sendAndApply(sm);
         }
 
         // Set temp owner of both heroes to player0 and player1
