@@ -278,16 +278,22 @@ namespace ML {
         // don't record stats for retreats (i.e. env resets)
         if (stats && br->result == EBattleResult::NORMAL) {
             auto extractHeroID = [](std::string name) {
-                // Define the regex pattern
                 std::regex pattern(R"(^hero_(\d+)_pool_([0-9A-Za-z]+)$)");
 
+                int hero_id = -1;
+                std::string pool_name = "default";
                 std::smatch match;
-                if (!std::regex_match(name, match, pattern))
-                    throw std::runtime_error("invalid hero name: " + name);
 
-                // Extract hero_id and pool_name
-                int hero_id = std::stoi(match[1].str());
-                std::string pool_name = match[2].str();
+                if (std::regex_match(name, match, pattern)) {
+                    pool_name = match[2].str();
+                } else {
+                    // assert old hero name format (no pools)
+                    std::regex pattern2(R"(^hero_(\d+)$)");
+                    if (!std::regex_match(name, match, pattern2))
+                        throw std::runtime_error("invalid hero name: " + name);
+                }
+
+                hero_id = std::stoi(match[1].str());
 
                 return std::pair<int, std::string>(hero_id, pool_name);
             };
