@@ -43,7 +43,11 @@ namespace ML {
     public:
         ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config);
 
-        void setupBattleHook(const CGTownInstance *& town, ui32 & seed);
+        void setupBattleHook(
+            const CGTownInstance *& town,
+            TerrainId & terrain,
+            ui32 & seed
+        );
 
         void startBattleHook(
             const CArmedInstance *&army1,
@@ -63,6 +67,7 @@ namespace ML {
         CGameState * gs;
         const Config config;
         std::map<std::string, HeroPool> heropools;
+        std::set<TerrainId> allterrains;
         std::vector<ConstTransitivePtr<CGTownInstance>> alltowns;
         std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> allmachines;
         std::unique_ptr<Stats> stats;  // XXX: must come after heropools

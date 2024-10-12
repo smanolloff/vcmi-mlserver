@@ -17,11 +17,13 @@
 #include "ServerPlugin.h"
 #include "ArtifactUtils.h"
 #include "Global.h"
+#include "TerrainHandler.h"
 #include "constants/EntityIdentifiers.h"
 #include "gameState/CGameState.h"
 #include "mapObjects/CGHeroInstance.h"
 #include "mapObjects/CGTownInstance.h"
 #include "mapping/CMap.h"
+#include "mapping/CMapDefines.h"
 #include "networkPacks/PacksForClient.h"
 #include "networkPacks/PacksForClientBattle.h"
 #include "server/CGameHandler.h"
@@ -70,6 +72,18 @@ namespace ML {
         return res;
     }
 
+
+    static std::set<TerrainId> InitTerrains() {
+        std::set<TerrainId> res;
+        for(const auto & terrain : VLC->terrainTypeHandler->objects) {
+            if (terrain->isLand() && terrain->isPassable()) {
+                res.insert(terrain->getId());
+            }
+        }
+        return res;
+    }
+
+
     static std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> InitWarMachines(CGameState * gs) {
         auto res = std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> {};
 
@@ -83,8 +97,7 @@ namespace ML {
         return res;
     }
 
-    // static
-    std::unique_ptr<Stats> InitStats(CGameState * gs, Config config, int npools, int poolsize) {
+    static std::unique_ptr<Stats> InitStats(CGameState * gs, Config config, int npools, int poolsize) {
         if (config.statsMode == "disabled")
             return nullptr;
 
@@ -108,6 +121,7 @@ namespace ML {
     , gs(gs)
     , config(config)
     , heropools(InitHeroPools(gs->map->heroesOnMap))
+    , allterrains(InitTerrains())
     , alltowns(gs->map->towns)
     , allmachines(InitWarMachines(gs))
     , stats(InitStats(gs, config, heropools.size(), heropools.begin()->second.heroes.size()))
@@ -146,7 +160,14 @@ namespace ML {
         }
     }
 
-    void ServerPlugin::setupBattleHook(const CGTownInstance *& town, ui32 & seed) {
+    void ServerPlugin::setupBattleHook(const CGTownInstance *& town, TerrainId & terrain, ui32 & seed) {
+        if (true) { // TODO: if (config.randomTerrain > 0)
+            std::uniform_int_distribution<> dist(0, allterrains.size() - 1);
+            auto it = allterrains.begin();
+            std::advance(it, dist(rng));
+            terrain = *it;
+        }
+
         if (config.randomObstacles > 0 && (battlecounter % config.randomObstacles == 0)) {
             // modification by reference
             seed = gs->getRandomGenerator().nextInt(0, std::numeric_limits<int>::max());
