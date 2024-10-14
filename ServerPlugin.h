@@ -46,6 +46,7 @@ namespace ML {
         void setupBattleHook(
             const CGTownInstance *& town,
             TerrainId & terrain,
+            BattleField & terType,
             ui32 & seed
         );
 
@@ -67,7 +68,7 @@ namespace ML {
         CGameState * gs;
         const Config config;
         std::map<std::string, HeroPool> heropools;
-        std::set<TerrainId> allterrains;
+        std::set<std::shared_ptr<TerrainType>> allterrains;
         std::vector<ConstTransitivePtr<CGTownInstance>> alltowns;
         std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> allmachines;
         std::unique_ptr<Stats> stats;  // XXX: must come after heropools

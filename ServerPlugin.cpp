@@ -24,6 +24,7 @@
 #include "mapObjects/CGTownInstance.h"
 #include "mapping/CMap.h"
 #include "mapping/CMapDefines.h"
+#include "modding/IdentifierStorage.h"
 #include "networkPacks/PacksForClient.h"
 #include "networkPacks/PacksForClientBattle.h"
 #include "server/CGameHandler.h"
@@ -73,11 +74,12 @@ namespace ML {
     }
 
 
-    static std::set<TerrainId> InitTerrains() {
-        std::set<TerrainId> res;
+    static std::set<std::shared_ptr<TerrainType>> InitTerrains() {
+        std::set<std::shared_ptr<TerrainType>> res;
         for(const auto & terrain : VLC->terrainTypeHandler->objects) {
-            if (terrain->isLand() && terrain->isPassable()) {
-                res.insert(terrain->getId());
+            // if (terrain->isLand() && terrain->isPassable()) {
+            if (terrain->isPassable()) {
+                res.insert(terrain);
             }
         }
         return res;
@@ -160,7 +162,7 @@ namespace ML {
         }
     }
 
-    void ServerPlugin::setupBattleHook(const CGTownInstance *& town, TerrainId & terrain, ui32 & seed) {
+    void ServerPlugin::setupBattleHook(const CGTownInstance *& town, TerrainId & terrain, BattleField & terType, ui32 & seed) {
         if (config.randomTerrainChance > 0) {
             auto dist = std::uniform_int_distribution<>(0, 99);
             auto roll = dist(rng);
@@ -171,7 +173,13 @@ namespace ML {
                 std::uniform_int_distribution<> dist(0, allterrains.size() - 1);
                 auto it = allterrains.begin();
                 std::advance(it, dist(rng));
-                terrain = *it;
+                auto tt = *it;
+                terrain = tt->getId();
+
+                if (tt->isWater()) {
+                    // modification by reference
+                    terType = BattleField(*VLC->identifiers()->getIdentifier("core", "battlefield.ship_to_ship"));
+                }
             }
         }
 
