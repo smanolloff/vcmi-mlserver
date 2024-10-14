@@ -161,11 +161,18 @@ namespace ML {
     }
 
     void ServerPlugin::setupBattleHook(const CGTownInstance *& town, TerrainId & terrain, ui32 & seed) {
-        if (true) { // TODO: if (config.randomTerrain > 0)
-            std::uniform_int_distribution<> dist(0, allterrains.size() - 1);
-            auto it = allterrains.begin();
-            std::advance(it, dist(rng));
-            terrain = *it;
+        if (config.randomTerrainChance > 0) {
+            auto dist = std::uniform_int_distribution<>(0, 99);
+            auto roll = dist(rng);
+            if (roll < config.randomTerrainChance) {
+                // XXX: client will render the "original" terrain texture,
+                //      but that's only visual, as the newly set terrain
+                //      is the one actually in effect.
+                std::uniform_int_distribution<> dist(0, allterrains.size() - 1);
+                auto it = allterrains.begin();
+                std::advance(it, dist(rng));
+                terrain = *it;
+            }
         }
 
         if (config.randomObstacles > 0 && (battlecounter % config.randomObstacles == 0)) {
@@ -271,6 +278,16 @@ namespace ML {
             }
         }
 
+        if (config.tightFormationChance > 0) {
+            for (auto h : {hero1, hero2}) {
+                auto dist = std::uniform_int_distribution<>(0, 99);
+                auto roll = dist(rng);
+                const_cast<CGHeroInstance*>(h)->formation = (roll < config.tightFormationChance)
+                    ? EArmyFormation::TIGHT
+                    : EArmyFormation::LOOSE;
+            }
+        }
+
         // Randomize mana
         auto dist = std::uniform_int_distribution<>(config.manaMin, config.manaMax);
         for(auto h : {hero1, hero2}) {
@@ -288,12 +305,6 @@ namespace ML {
         //      if redside=0 (left), hero1 should have owner=0 (red)
         const_cast<CGHeroInstance*>(hero1)->tempOwner = PlayerColor(redside);
         const_cast<CGHeroInstance*>(hero2)->tempOwner = PlayerColor(!redside);
-
-        if (true) { // TODO: if (config.randomFormations)
-            dist = std::uniform_int_distribution<>(0, 1);
-            const_cast<CGHeroInstance*>(hero1)->formation = EArmyFormation(dist(rng));
-            const_cast<CGHeroInstance*>(hero2)->formation = EArmyFormation(dist(rng));
-        }
 
         // modification by reference
         army1 = static_cast<const CArmedInstance*>(hero1);
