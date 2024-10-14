@@ -289,6 +289,12 @@ namespace ML {
         const_cast<CGHeroInstance*>(hero1)->tempOwner = PlayerColor(redside);
         const_cast<CGHeroInstance*>(hero2)->tempOwner = PlayerColor(!redside);
 
+        if (true) { // TODO: if (config.randomFormations)
+            dist = std::uniform_int_distribution<>(0, 1);
+            const_cast<CGHeroInstance*>(hero1)->formation = EArmyFormation(dist(rng));
+            const_cast<CGHeroInstance*>(hero2)->formation = EArmyFormation(dist(rng));
+        }
+
         // modification by reference
         army1 = static_cast<const CArmedInstance*>(hero1);
         army2 = static_cast<const CArmedInstance*>(hero2);
