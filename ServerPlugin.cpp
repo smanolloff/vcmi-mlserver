@@ -200,6 +200,9 @@ namespace ML {
         bool swappingSides = (config.swapSides > 0 && (battlecounter % config.swapSides) == 0);
         // printf("battlecounter: %d, swapSides: %d, rem: %d\n", battlecounter, config.swapSides, battlecounter % config.swapSides);
 
+        if (!(hero1 && hero2))
+            throw std::runtime_error("Both hero1 and hero2 are required");
+
         battlecounter++;
 
         if (swappingSides)
