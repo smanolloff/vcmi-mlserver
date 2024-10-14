@@ -77,8 +77,9 @@ namespace ML {
     static std::set<std::shared_ptr<TerrainType>> InitTerrains() {
         std::set<std::shared_ptr<TerrainType>> res;
         for(const auto & terrain : VLC->terrainTypeHandler->objects) {
-            // if (terrain->isLand() && terrain->isPassable()) {
-            if (terrain->isPassable()) {
+            // XXX: boat-battlefields seem to glitch StupidAI vs StupidAI in an endless loop sometimes
+            // if (terrain->isPassable()) {
+            if (terrain->isLand() && terrain->isPassable()) {
                 res.insert(terrain);
             }
         }
