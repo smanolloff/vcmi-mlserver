@@ -77,9 +77,11 @@ namespace ML {
     static std::set<std::shared_ptr<TerrainType>> InitTerrains() {
         std::set<std::shared_ptr<TerrainType>> res;
         for(const auto & terrain : VLC->terrainTypeHandler->objects) {
-            // XXX: boat-battlefields seem to glitch StupidAI vs StupidAI in an endless loop sometimes
+            // XXX: water battles (i.e. ship-to-ship) are buggy
+            //      See https://github.com/vcmi/vcmi/issues/4781
+            //
             // if (terrain->isPassable()) {
-            if (terrain->isLand() && terrain->isPassable()) {
+            if (terrain->isPassable() && terrain->isLand()) {
                 res.insert(terrain);
             }
         }
