@@ -68,7 +68,7 @@ namespace ML {
         CGameState * gs;
         const Config config;
         std::map<std::string, HeroPool> heropools;
-        std::set<std::shared_ptr<TerrainType>> allterrains;
+        std::map<const BattleFieldInfo*, std::vector<const TerrainType*>> battleterrains;
         std::vector<ConstTransitivePtr<CGTownInstance>> alltowns;
         std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> allmachines;
         std::unique_ptr<Stats> stats;  // XXX: must come after heropools

@@ -16,6 +16,7 @@
 
 #include "ServerPlugin.h"
 #include "ArtifactUtils.h"
+#include "BattleFieldHandler.h"
 #include "Global.h"
 #include "TerrainHandler.h"
 #include "constants/EntityIdentifiers.h"
@@ -74,17 +75,28 @@ namespace ML {
     }
 
 
-    static std::set<std::shared_ptr<TerrainType>> InitTerrains() {
-        std::set<std::shared_ptr<TerrainType>> res;
-        for(const auto & terrain : VLC->terrainTypeHandler->objects) {
-            // XXX: water battles (i.e. ship-to-ship) are buggy
-            //      See https://github.com/vcmi/vcmi/issues/4781
-            //
-            // if (terrain->isPassable()) {
-            if (terrain->isPassable() && terrain->isLand()) {
-                res.insert(terrain);
+    static std::map<const BattleFieldInfo*, std::vector<const TerrainType*>> InitBattleterrains() {
+        auto res = std::map<const BattleFieldInfo*, std::vector<const TerrainType*>> {};
+        auto lands = std::set<const TerrainType*> {};
+        VLC->terrainTypeHandler->forEach([&res, &lands] (const TerrainType * terrain, bool &_) {
+            if (terrain->isLand() && terrain->isPassable())
+                lands.insert(terrain);
+
+            for (const auto & bf : terrain->battleFields)
+                res[bf.getInfo()].push_back(terrain);
+        });
+
+        VLC->battlefieldsHandler->forEach([&res, &lands](const BattleFieldInfo * bi, bool &_) {
+            if (res.count(bi) == 0) {
+                if (bi->getJsonKey() == "core:ship_to_ship") {
+                    // XXX: ship-to-ship battles are buggy
+                    //      See https://github.com/vcmi/vcmi/issues/4781
+                    // res[bi] = {VLC->terrainTypeHandler->getByIndex(TerrainId::WATER)}
+                } else {
+                    res[bi].insert(res[bi].end(), lands.begin(), lands.end());
+                }
             }
-        }
+        });
         return res;
     }
 
@@ -126,7 +138,7 @@ namespace ML {
     , gs(gs)
     , config(config)
     , heropools(InitHeroPools(gs->map->heroesOnMap))
-    , allterrains(InitTerrains())
+    , battleterrains(InitBattleterrains())
     , alltowns(gs->map->towns)
     , allmachines(InitWarMachines(gs))
     , stats(InitStats(gs, config, heropools.size(), heropools.begin()->second.heroes.size()))
@@ -173,16 +185,18 @@ namespace ML {
                 // XXX: client will render the "original" terrain texture,
                 //      but that's only visual, as the newly set terrain
                 //      is the one actually in effect.
-                std::uniform_int_distribution<> dist(0, allterrains.size() - 1);
-                auto it = allterrains.begin();
-                std::advance(it, dist(rng));
-                auto tt = *it;
-                terrain = tt->getId();
+                auto dist1 = std::uniform_int_distribution<>(0, battleterrains.size() - 1);
+                auto it1 = battleterrains.begin();
+                std::advance(it1, dist1(rng));
+                auto &[bi, terrains] = *it1;
 
-                if (tt->isWater()) {
-                    // modification by reference
-                    terType = BattleField(*VLC->identifiers()->getIdentifier("core", "battlefield.ship_to_ship"));
-                }
+                auto dist2 = std::uniform_int_distribution<>(0, terrains.size() - 1);
+                auto it2 = terrains.begin();
+                std::advance(it2, dist2(rng));
+
+                // modification by reference
+                terType = bi->battlefield;
+                terrain = (*it2)->getId();
             }
         }
 
