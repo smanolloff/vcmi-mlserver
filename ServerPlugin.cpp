@@ -75,28 +75,63 @@ namespace ML {
     }
 
 
-    static std::map<const BattleFieldInfo*, std::vector<const TerrainType*>> InitBattleterrains() {
+    static std::map<const BattleFieldInfo*, std::vector<const TerrainType*>> InitBattleterrains(std::string battlefieldPattern) {
         auto res = std::map<const BattleFieldInfo*, std::vector<const TerrainType*>> {};
         auto lands = std::set<const TerrainType*> {};
-        VLC->terrainTypeHandler->forEach([&res, &lands] (const TerrainType * terrain, bool &_) {
-            if (terrain->isLand() && terrain->isPassable())
+        auto pattern = std::regex();
+
+        if (battlefieldPattern.empty()) {
+            pattern = std::regex(".");
+        } else {
+            pattern = std::regex(battlefieldPattern);
+        }
+
+        VLC->terrainTypeHandler->forEach([&res, &lands, &pattern] (const TerrainType * terrain, bool &_) {
+            if (terrain->isLand() && terrain->isPassable()) {
                 lands.insert(terrain);
+            }
 
-            for (const auto & bf : terrain->battleFields)
-                res[bf.getInfo()].push_back(terrain);
-        });
-
-        VLC->battlefieldsHandler->forEach([&res, &lands](const BattleFieldInfo * bi, bool &_) {
-            if (res.count(bi) == 0) {
-                if (bi->getJsonKey() == "core:ship_to_ship") {
-                    // XXX: ship-to-ship battles are buggy
-                    //      See https://github.com/vcmi/vcmi/issues/4781
-                    // res[bi] = {VLC->terrainTypeHandler->getByIndex(TerrainId::WATER)}
+            for (const auto & bf : terrain->battleFields) {
+                if (std::regex_search(bf.getInfo()->getJsonKey(), pattern)) {
+                    res[bf.getInfo()].push_back(terrain);
                 } else {
-                    res[bi].insert(res[bi].end(), lands.begin(), lands.end());
+                    // std::cout << "Filtering out " << bf.getInfo()->getJsonKey() << "\n";
                 }
             }
         });
+
+        VLC->battlefieldsHandler->forEach([&res, &lands, &pattern](const BattleFieldInfo * bi, bool &_) {
+            if (res.count(bi) == 0) {
+                if (std::regex_search(bi->getJsonKey(), pattern)) {
+                    if (bi->getJsonKey() == "core:ship_to_ship") {
+                        // XXX: ship-to-ship battles are buggy
+                        //      See https://github.com/vcmi/vcmi/issues/4781
+                        // res[bi] = {VLC->terrainTypeHandler->getByIndex(TerrainId::WATER)}
+                    } else {
+                        res[bi].insert(res[bi].end(), lands.begin(), lands.end());
+                    }
+                } else {
+                    // std::cout << "Filtering out " << bi->getJsonKey() << "\n";
+                }
+            }
+        });
+
+        if (!battlefieldPattern.empty()) {
+            std::cout << "Filtered battlefields matching pattern: '" << battlefieldPattern << "'\n";
+
+            if (res.size() == 0) {
+                std::cout << "ALL BATTLEFIELDS WERE FILTERED OUT\n";
+            }
+
+            for (auto &[bi, terrains] : res) {
+                std::cout << bi->getJsonKey() << " ->";
+                for (auto &t : terrains) {
+                    std::cout << " " << t->getJsonKey();
+                }
+                std::cout << "\n";
+             }
+         }
+
         return res;
     }
 
@@ -138,7 +173,7 @@ namespace ML {
     , gs(gs)
     , config(config)
     , heropools(InitHeroPools(gs->map->heroesOnMap))
-    , battleterrains(InitBattleterrains())
+    , battleterrains(InitBattleterrains(config.battlefieldPattern))
     , alltowns(gs->map->towns)
     , allmachines(InitWarMachines(gs))
     , stats(InitStats(gs, config, heropools.size(), heropools.begin()->second.heroes.size()))
@@ -178,7 +213,7 @@ namespace ML {
     }
 
     void ServerPlugin::setupBattleHook(const CGTownInstance *& town, TerrainId & terrain, BattleField & terType, ui32 & seed) {
-        if (config.randomTerrainChance > 0) {
+        if (config.randomTerrainChance > 0 && battleterrains.size() > 0) {
             auto dist = std::uniform_int_distribution<>(0, 99);
             auto roll = dist(rng);
             if (roll < config.randomTerrainChance) {

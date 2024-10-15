@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <regex>
+
 #include "Global.h"
 #include "Config.h"
 #include "lib/mapObjects/CArmedInstance.h"

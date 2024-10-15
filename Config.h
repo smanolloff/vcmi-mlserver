@@ -33,6 +33,7 @@ namespace ML {
             warmachineChance = settings["server"]["ML"]["warmachineChance"].Integer();
             tightFormationChance = settings["server"]["ML"]["tightFormationChance"].Integer();
             randomTerrainChance = settings["server"]["ML"]["randomTerrainChance"].Integer();
+            battlefieldPattern = settings["server"]["ML"]["battlefieldPattern"].String();
             swapSides = settings["server"]["ML"]["swapSides"].Integer();
             manaMin = settings["server"]["ML"]["manaMin"].Integer();
             manaMax = settings["server"]["ML"]["manaMax"].Integer();
@@ -42,6 +43,8 @@ namespace ML {
             statsStorage = settings["server"]["ML"]["statsStorage"].String();
             statsMode = settings["server"]["ML"]["statsMode"].String();
         }
+
+        std::string battlefieldPattern = "";
 
         int maxBattles = 0;
         int rngSeed = 0;
