@@ -31,6 +31,7 @@ namespace ML {
             randomObstacles = settings["server"]["ML"]["randomObstacles"].Integer();
             townChance = settings["server"]["ML"]["townChance"].Integer();
             warmachineChance = settings["server"]["ML"]["warmachineChance"].Integer();
+            randomStackChance = settings["server"]["ML"]["randomStackChance"].Integer();
             tightFormationChance = settings["server"]["ML"]["tightFormationChance"].Integer();
             randomTerrainChance = settings["server"]["ML"]["randomTerrainChance"].Integer();
             battlefieldPattern = settings["server"]["ML"]["battlefieldPattern"].String();
@@ -52,6 +53,7 @@ namespace ML {
         int randomObstacles = 0;
         int townChance = 0;
         int warmachineChance = 0;
+        int randomStackChance = 0;
         int tightFormationChance = 0;
         int randomTerrainChance = 0;
         int swapSides = 0;

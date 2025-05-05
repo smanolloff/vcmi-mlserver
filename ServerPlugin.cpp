@@ -28,6 +28,7 @@
 #include "modding/IdentifierStorage.h"
 #include "networkPacks/PacksForClient.h"
 #include "networkPacks/PacksForClientBattle.h"
+#include "networkPacks/StackLocation.h"
 #include "server/CGameHandler.h"
 #include "server/CVCMIServer.h"
 #include "vstd/RNG.h"
@@ -149,6 +150,18 @@ namespace ML {
         return res;
     }
 
+    static std::vector<const CreatureID> InitCreatures() {
+        auto res = std::vector<const CreatureID>{};
+
+        VLC->creatures()->forEach([&res](const Creature * cr, bool &stop) {
+            // Invalid creatures (arrow towers, war machines, NOT_USED, etc. have lvl=0)
+            if (cr->getLevel() > 0)
+                res.push_back(cr->getId());
+        });
+
+        return res;
+    }
+
     static std::unique_ptr<Stats> InitStats(CGameState * gs, Config config, int npools, int poolsize) {
         if (config.statsMode == "disabled")
             return nullptr;
@@ -176,6 +189,7 @@ namespace ML {
     , battleterrains(InitBattleterrains(config.battlefieldPattern))
     , alltowns(gs->map->towns)
     , allmachines(InitWarMachines(gs))
+    , allcreatures(InitCreatures())
     , stats(InitStats(gs, config, heropools.size(), heropools.begin()->second.heroes.size()))
     , rng(std::mt19937(config.rngSeed ? config.rngSeed : gs->getRandomGenerator().nextInt(0, std::numeric_limits<int>::max())))
     {
@@ -369,6 +383,42 @@ namespace ML {
         // modification by reference
         army1 = static_cast<const CArmedInstance*>(hero1);
         army2 = static_cast<const CArmedInstance*>(hero2);
+
+        if (config.randomStackChance) {
+            auto dist100 = std::uniform_int_distribution<>(0, 99);
+            auto distCreatures = std::uniform_int_distribution<>(0, allcreatures.size() - 1);
+            auto distQuantity = std::uniform_int_distribution<>(0, 1000);
+
+            auto maybeAddStack = [this, &dist100, &distQuantity, &distCreatures](const CGHeroInstance *hero, int slot) {
+                if (hero->hasStackAtSlot(SlotID(slot))) {
+                    if (hero->stacksCount() == 1)
+                        return;
+
+                    // Roll whether to remove existing stack
+                    if (dist100(rng) >= config.randomStackChance)
+                        return;
+
+                    gh->eraseStack(StackLocation(hero, SlotID(slot)));
+                }
+
+                // Roll whether to add a new stack
+                if (dist100(rng) >= config.randomStackChance)
+                    return;
+
+                auto * cr = allcreatures.at(distCreatures(rng)).toCreature();
+                auto qty = distQuantity(rng);
+                // Crude guard against absurd stacks such as 1K azure dragons
+                qty = std::max(1, qty / cr->getLevel());
+                // printf("Adding %d %s to slot %d for hero %s\n", qty, cr->getNamePluralTranslated().c_str(), slot, hero->nameCustomTextId.c_str());
+                gh->insertNewStack(StackLocation(hero, SlotID(slot)), cr, qty);
+            };
+
+            for (auto &h : {hero1, hero2}) {
+                for (int i=0; i<7; ++i) {
+                    maybeAddStack(h, i);
+                }
+            }
+        }
     }
 
     void ServerPlugin::endBattleHook(
