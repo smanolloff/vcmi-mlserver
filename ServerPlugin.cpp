@@ -150,8 +150,8 @@ namespace ML {
         return res;
     }
 
-    static std::vector<const CreatureID> InitCreatures() {
-        auto res = std::vector<const CreatureID>{};
+    static std::vector<CreatureID> InitCreatures() {
+        auto res = std::vector<CreatureID>{};
 
         VLC->creatures()->forEach([&res](const Creature * cr, bool &stop) {
             // Invalid creatures (arrow towers, war machines, NOT_USED, etc. have lvl=0)

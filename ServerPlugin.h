@@ -73,7 +73,7 @@ namespace ML {
         std::map<const BattleFieldInfo*, std::vector<const TerrainType*>> battleterrains;
         std::vector<ConstTransitivePtr<CGTownInstance>> alltowns;
         std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> allmachines;
-        std::vector<const CreatureID> allcreatures;
+        std::vector<CreatureID> allcreatures;
         std::unique_ptr<Stats> stats;  // XXX: must come after heropools
         std::mt19937 rng;
 
