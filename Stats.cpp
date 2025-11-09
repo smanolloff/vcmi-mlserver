@@ -65,6 +65,7 @@ namespace ML {
 
     // function for executing SQL string literals
     std::pair<int, std::string> TryExecSQL(sqlite3* db, const char* sql) {
+        printf("logstats loglevel: %u\n", logStats->getEffectiveLevel());
         MEASURE_START2(ExecSQL, sql);
         char* err = nullptr;
         auto rc = sqlite3_exec(db, sql, nullptr, nullptr, &err);

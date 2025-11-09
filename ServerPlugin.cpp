@@ -15,7 +15,6 @@
 // =============================================================================
 
 #include "ServerPlugin.h"
-#include "ArtifactUtils.h"
 #include "BattleFieldHandler.h"
 #include "Global.h"
 #include "TerrainHandler.h"
@@ -24,8 +23,6 @@
 #include "mapObjects/CGHeroInstance.h"
 #include "mapObjects/CGTownInstance.h"
 #include "mapping/CMap.h"
-#include "mapping/CMapDefines.h"
-#include "modding/IdentifierStorage.h"
 #include "networkPacks/PacksForClient.h"
 #include "networkPacks/PacksForClientBattle.h"
 #include "networkPacks/StackLocation.h"
@@ -45,12 +42,13 @@ namespace ML {
      * Format: "hero_<INT>_pool_<STR>"
      * Example: "hero_5123_pool_150k"
      */
-    static std::map<std::string, HeroPool> InitHeroPools(std::vector<ConstTransitivePtr<CGHeroInstance>> allheroes) {
+    static std::map<std::string, HeroPool> InitHeroPools(CGameState* gs) {
         auto pattern = std::regex(R"(^hero_\d+_pool_([0-9A-Za-z]+)$)");
         auto res = std::map<std::string, HeroPool> {};
         int poolid = 0;
 
-        for (auto &hero : allheroes) {
+        for (auto &heroid : gs->getMap().getHeroesOnMap()) {
+            auto *hero = gs->getHero(heroid);
             std::string poolname = "default";  // fallback poolname
             std::smatch matches;
 
@@ -75,6 +73,14 @@ namespace ML {
         return res;
     }
 
+    static std::vector<CGTownInstance*> InitTowns(CGameState* gs) {
+        auto res = std::vector<CGTownInstance*> {};
+        for (const auto &townid : gs->getMap().getAllTowns()) {
+            auto town = gs->getTown(townid);
+            res.push_back(town);
+        }
+        return res;
+    }
 
     static std::map<const BattleFieldInfo*, std::vector<const TerrainType*>> InitBattleterrains(std::string battlefieldPattern) {
         auto res = std::map<const BattleFieldInfo*, std::vector<const TerrainType*>> {};
@@ -87,7 +93,7 @@ namespace ML {
             pattern = std::regex(battlefieldPattern);
         }
 
-        VLC->terrainTypeHandler->forEach([&res, &lands, &pattern] (const TerrainType * terrain, bool &_) {
+        LIBRARY->terrainTypeHandler->forEach([&res, &lands, &pattern] (const TerrainType * terrain, bool &_) {
             if (terrain->isLand() && terrain->isPassable()) {
                 lands.insert(terrain);
             }
@@ -101,7 +107,7 @@ namespace ML {
             }
         });
 
-        VLC->battlefieldsHandler->forEach([&res, &lands, &pattern](const BattleFieldInfo * bi, bool &_) {
+        LIBRARY->battlefieldsHandler->forEach([&res, &lands, &pattern](const BattleFieldInfo * bi, bool &_) {
             if (res.count(bi) == 0) {
                 if (std::regex_search(bi->getJsonKey(), pattern)) {
                     if (bi->getJsonKey() == "core:ship_to_ship") {
@@ -140,11 +146,11 @@ namespace ML {
     static std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> InitWarMachines(CGameState * gs) {
         auto res = std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> {};
 
-        for (const auto &h : gs->map->heroesOnMap) {
-            res.insert({h, {
-                ArtifactUtils::createArtifact(ArtifactID::BALLISTA),
-                ArtifactUtils::createArtifact(ArtifactID::AMMO_CART),
-                ArtifactUtils::createArtifact(ArtifactID::FIRST_AID_TENT)
+        for (const auto &hid : gs->getMap().getHeroesOnMap()) {
+            res.insert({gs->getHero(hid), {
+                gs->createArtifact(ArtifactID::BALLISTA),
+                gs->createArtifact(ArtifactID::AMMO_CART),
+                gs->createArtifact(ArtifactID::FIRST_AID_TENT)
             }});
         }
         return res;
@@ -153,7 +159,7 @@ namespace ML {
     static std::vector<CreatureID> InitCreatures() {
         auto res = std::vector<CreatureID>{};
 
-        VLC->creatures()->forEach([&res](const Creature * cr, bool &stop) {
+        LIBRARY->creatures()->forEach([&res](const Creature * cr, bool &stop) {
             // Invalid creatures (arrow towers, war machines, NOT_USED, etc. have lvl=0)
             if (cr->getLevel() > 0)
                 res.push_back(cr->getId());
@@ -167,7 +173,7 @@ namespace ML {
             return nullptr;
 
         if (config.swapSides > 0) {
-            THROW_FORMAT("Cannot track stats for %s when swapping sides", config.statsMode);
+            throw std::runtime_error("Cannot track stats for " + config.statsMode + " when swapping sides");
         }
 
         return std::make_unique<Stats>(
@@ -183,15 +189,15 @@ namespace ML {
 
     ServerPlugin::ServerPlugin(CGameHandler * gh, CGameState * gs, Config & config)
     : gh(gh)
-    , gs(gs)
+    // , gs(gs)
     , config(config)
-    , heropools(InitHeroPools(gs->map->heroesOnMap))
+    , heropools(InitHeroPools(gs))
     , battleterrains(InitBattleterrains(config.battlefieldPattern))
-    , alltowns(gs->map->towns)
+    , alltowns(InitTowns(gs))
     , allmachines(InitWarMachines(gs))
     , allcreatures(InitCreatures())
     , stats(InitStats(gs, config, heropools.size(), heropools.begin()->second.heroes.size()))
-    , rng(std::mt19937(config.rngSeed ? config.rngSeed : gs->getRandomGenerator().nextInt(0, std::numeric_limits<int>::max())))
+    , rng(std::mt19937(config.rngSeed ? config.rngSeed : gh->getRandomGenerator().nextInt(0, std::numeric_limits<int>::max())))
     {
         if (config.randomHeroes > 0) {
             for (auto &[poolname, pool] : heropools) {
@@ -213,16 +219,16 @@ namespace ML {
             {ArtifactPosition::MISC4, ArtifactID(85)},  // hourglassOfTheEvilHour
         };
 
-        for (const auto &h : gs->map->heroesOnMap) {
-            auto hh = const_cast<CGHeroInstance*>(h.get());
+        for (const auto &hid : gs->getMap().getHeroesOnMap()) {
+            auto h = gs->getHero(hid);
 
             for (auto &[pos, artid] : artifacts) {
-                if (hh->artifactsWorn.find(pos) != hh->artifactsWorn.end())
-                    hh->removeArtifact(pos);
-                hh->putArtifact(pos, ArtifactUtils::createArtifact(artid));
+                if (h->artifactsWorn.find(pos) != h->artifactsWorn.end())
+                    h->removeArtifact(pos);
+                h->putArtifact(pos, gs->createArtifact(artid));
             }
 
-            hh->setSecSkillLevel(SecondarySkill::LEADERSHIP, 3, true);
+            h->setSecSkillLevel(SecondarySkill::LEADERSHIP, 3, ChangeValueMode::ABSOLUTE);
         }
     }
 
@@ -251,7 +257,7 @@ namespace ML {
 
         if (config.randomObstacles > 0 && (battlecounter % config.randomObstacles == 0)) {
             // modification by reference
-            seed = gs->getRandomGenerator().nextInt(0, std::numeric_limits<int>::max());
+            seed = gh->getRandomGenerator().nextInt(0, std::numeric_limits<int>::max());
         }
 
         if (config.townChance > 0) {
@@ -381,8 +387,8 @@ namespace ML {
         const_cast<CGHeroInstance*>(hero2)->tempOwner = PlayerColor(!redside);
 
         // modification by reference
-        army1 = static_cast<const CArmedInstance*>(hero1);
-        army2 = static_cast<const CArmedInstance*>(hero2);
+        army1 = hero1->getArmy();
+        army2 = hero2->getArmy();
 
         if (config.randomStackChance) {
             auto dist100 = std::uniform_int_distribution<>(0, 99);
@@ -398,7 +404,7 @@ namespace ML {
                     if (dist100(rng) >= config.randomStackChance)
                         return;
 
-                    gh->eraseStack(StackLocation(hero, SlotID(slot)));
+                    gh->eraseStack(StackLocation(hero->id, SlotID(slot)));
                 }
 
                 // Roll whether to add a new stack
@@ -410,7 +416,7 @@ namespace ML {
                 // Crude guard against absurd stacks such as 1K azure dragons
                 qty = std::max(1, qty / cr->getLevel());
                 // printf("Adding %d %s to slot %d for hero %s\n", qty, cr->getNamePluralTranslated().c_str(), slot, hero->nameCustomTextId.c_str());
-                gh->insertNewStack(StackLocation(hero, SlotID(slot)), cr, qty);
+                gh->insertNewStack(StackLocation(hero->id, SlotID(slot)), cr, qty);
             };
 
             for (auto &h : {hero1, hero2}) {

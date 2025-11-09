@@ -16,18 +16,18 @@
 
 #pragma once
 
-#include <regex>
-
 #include "Global.h"
 #include "Config.h"
-#include "lib/mapObjects/CArmedInstance.h"
+#include "lib/mapObjects/army/CArmedInstance.h"
 #include "lib/mapObjects/CGHeroInstance.h"
 #include "lib/mapObjects/CGTownInstance.h"
+// #include "server/CGameHandler.h"
 #include "server/ML/Stats.h"
-#include "server/queries/BattleQueries.h"
 #include "Stats.h"
 
 VCMI_LIB_NAMESPACE_BEGIN
+
+class CGameHandler; // forward declaration
 
 namespace ML {
     class HeroPool {
@@ -37,7 +37,7 @@ namespace ML {
 
         const int id;
         const std::string name;
-        std::vector<ConstTransitivePtr<CGHeroInstance>> heroes = {};
+        std::vector<CGHeroInstance*> heroes = {};
         int counter = 0;
     };
 
@@ -67,11 +67,11 @@ namespace ML {
 
     private:
         CGameHandler * gh;
-        CGameState * gs;
+        // CGameState * gs;
         const Config config;
         std::map<std::string, HeroPool> heropools;
         std::map<const BattleFieldInfo*, std::vector<const TerrainType*>> battleterrains;
-        std::vector<ConstTransitivePtr<CGTownInstance>> alltowns;
+        std::vector<CGTownInstance*> alltowns;
         std::map<const CGHeroInstance*, std::array<CArtifactInstance*, 3>> allmachines;
         std::vector<CreatureID> allcreatures;
         std::unique_ptr<Stats> stats;  // XXX: must come after heropools
